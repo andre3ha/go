@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LR2 API Test UI</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
+    h1 { margin-bottom: 8px; }
+    .row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    input, button, textarea { font-size: 14px; padding: 8px; }
+    input { min-width: 280px; }
+    button { cursor: pointer; }
+    textarea { width: 100%; height: 280px; font-family: Consolas, monospace; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Тест API (LR2)</h1>
+  <p>Убедись, что backend запущен (обычно <code>http://localhost:8080</code>).</p>
+
+  <div class="card">
+    <div class="row">
+      <label for="baseUrl">Base URL API:</label>
+      <input id="baseUrl" value="http://localhost:8080" />
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Проверка БД</h3>
+    <div class="row">
+      <button id="btnTest">GET /test</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>dbtest</h3>
+    <div class="row">
+      <input id="message" placeholder="message для POST /dbtest" value="hello from html" />
+      <button id="btnDbtestPost">POST /dbtest</button>
+      <button id="btnDbtestGet">GET /dbtest</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Пользователи</h3>
+    <div class="row">
+      <input id="limit" placeholder="limit" value="10" />
+      <button id="btnUsers">GET /users?limit=</button>
+    </div>
+    <div class="row">
+      <input id="userId" placeholder="UUID пользователя для GET /users/{id}" />
+      <button id="btnUserById">GET /users/{id}</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Ответ</h3>
+    <textarea id="output" readonly></textarea>
+  </div>
+
+  <script>
+    const output = document.getElementById("output");
+    const baseUrl = document.getElementById("baseUrl");
+
+    function print(title, data) {
+      const body = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      output.value = `[${new Date().toLocaleTimeString()}] ${title}\n${body}\n`;
+    }
+
+    async function request(path, method = "GET", payload = null) {
+      const url = `${baseUrl.value.replace(/\/$/, "")}${path}`;
+      const options = { method, headers: {} };
+      if (payload) {
+        options.headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(payload);
+      }
+
+      try {
+        const res = await fetch(url, options);
+        const text = await res.text();
+        let parsed = text;
+        try { parsed = JSON.parse(text); } catch (_) {}
+        print(`${method} ${path} -> ${res.status}`, parsed);
+      } catch (err) {
+        print(`${method} ${path} -> network error`, String(err));
+      }
+    }
+
+    document.getElementById("btnTest").onclick = () => request("/test");
+    document.getElementById("btnDbtestGet").onclick = () => request("/dbtest");
+    document.getElementById("btnDbtestPost").onclick = () =>
+      request("/dbtest", "POST", { message: document.getElementById("message").value });
+    document.getElementById("btnUsers").onclick = () => {
+      const limit = document.getElementById("limit").value || "10";
+      request(`/users?limit=${encodeURIComponent(limit)}`);
+    };
+    document.getElementById("btnUserById").onclick = () => {
+      const id = document.getElementById("userId").value.trim();
+      if (!id) {
+        print("Validation", "Введите user id");
+        return;
+      }
+      request(`/users/${encodeURIComponent(id)}`);
+    };
+  </script>
+</body>
+</html>
